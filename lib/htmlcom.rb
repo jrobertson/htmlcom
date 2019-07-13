@@ -42,9 +42,13 @@ module HtmlCom
 
     attr_reader :tab, :active
 
-    def initialize(headings: %w(tab1 tab2 tab3))
+    # current options for type:
+    #   :tabs, :full_page_tabs
+    
+    def initialize(type=:tabs, headings: %w(tab1 tab2 tab3))
 
-      @build = JsMenuBuilder.new(:tabs, headings: headings)
+      @type = type
+      @build = JsMenuBuilder.new(type, headings: headings)
 
       @tab = headings.map do |heading|
         Tab.new heading, content: "<h3>#{heading}</h3>", callback: self
@@ -82,7 +86,7 @@ module HtmlCom
         tab.title ? tab.to_a : nil
       end.compact.to_h
 
-      @build = JsMenuBuilder.new(:tabs, tabs: tabs, active: @active_tab)
+      @build = JsMenuBuilder.new(@type, tabs: tabs, active: @active_tab)
 
     end
 
