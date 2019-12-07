@@ -4,10 +4,83 @@
 
 # description: Generates HTML components and is designed for rendering dynamic web pages from a web server.
 
+require 'nokogiri'
+require 'xml_to_sliml'
+require 'jsajax_wizard'
 require 'jsmenubuilder'
 
 
-module HtmlCom
+module HtmlCom    
+  
+  class Accordion
+    
+    attr_reader :to_html
+    
+    def initialize(xml, debug: false)
+      
+      xml, @debug = xml, debug
+      
+      # transform the accordion XML to tags XML
+      tags = Nokogiri::XSLT(xsl()).transform(Nokogiri::XML(xml))\
+          .to_xhtml(indent: 0)
+      jmb = JsMenuBuilder.new(tags, debug: debug)
+
+      # apply the AJAX      
+      @to_html = JsAjaxWizard.new(jmb.to_webpage).to_html      
+
+    end
+    
+    
+    private
+
+    def xsl()
+      
+xsl= %q(
+    <xsl:stylesheet xmlns:xsl='http://www.w3.org/1999/XSL/Transform' version='1.0'>
+
+  <xsl:template match='accordion'>
+
+    <xsl:element name='tags'>
+      <xsl:attribute name='mode'>accordion</xsl:attribute>  
+      <xsl:apply-templates select='panel' />
+    </xsl:element>
+
+  </xsl:template>
+
+  <xsl:template match='panel'>
+
+    <xsl:element name='tag'>
+      <xsl:attribute name='title'>
+        <xsl:value-of select='@title'/>
+      </xsl:attribute>
+
+      <xsl:element name="input">
+        <xsl:attribute name="type">hidden</xsl:attribute>
+
+        <xsl:if test='@onopen!=""'>
+          <xsl:attribute name="onclick"><xsl:value-of select="@onopen"/></xsl:attribute>
+        </xsl:if>
+        <xsl:if test='@onclose!=""'>
+          <xsl:attribute name="ondblclick"><xsl:value-of select="@onclose"/></xsl:attribute>
+        </xsl:if>
+      </xsl:element>
+
+      <xsl:copy-of select="*"/>
+      <xsl:if test='@ajaxid!=""'> <!-- used with onopen -->
+        <div id='{@ajaxid}'>$<xsl:value-of select="@ajaxid"/></div>
+      </xsl:if>
+
+    </xsl:element>
+
+  </xsl:template>
+
+
+</xsl:stylesheet>
+)
+
+    end
+    
+  end
 
   class Tabs
 
@@ -45,13 +118,17 @@ module HtmlCom
     # current options for type:
     #   :tabs, :full_page_tabs
     
-    def initialize(type=:tabs, headings: %w(tab1 tab2 tab3))
+    def initialize(type=:tabs, headings: [], xml: nil)
 
       @type = type
       @build = JsMenuBuilder.new(type, headings: headings)
 
       @tab = headings.map do |heading|
         Tab.new heading, content: "<h3>#{heading}</h3>", callback: self
+      end
+
+      if xml then
+        @build.import(xml)
       end
 
     end
@@ -96,10 +173,18 @@ module HtmlCom
       @build.to_html
     end
 
+
+    # not yet working properly
+    def to_bangtag()
+      XmlToSliml.new(@build.to_xml, spacer: '!')\
+          .to_s.lines.map {|x| '!' + x }.join
+    end
+
     def to_webpage()
       @build.to_webpage
     end
 
   end
+  
 
 end
