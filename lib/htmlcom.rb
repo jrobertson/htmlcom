@@ -14,7 +14,7 @@ module HtmlCom
   
   class Accordion
     
-    attr_reader :to_html
+    attr_reader :to_html, :to_css, :to_js
     
     def initialize(xml, debug: false)
       
@@ -24,6 +24,8 @@ module HtmlCom
       tags = Nokogiri::XSLT(xsl()).transform(Nokogiri::XML(xml))\
           .to_xhtml(indent: 0)
       jmb = JsMenuBuilder.new(tags, debug: debug)
+      @to_css = jmb.to_css
+      @to_js = jmb.to_js
 
       # apply the AJAX      
       @to_html = JsAjaxWizard.new(jmb.to_webpage).to_html      
