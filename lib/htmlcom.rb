@@ -14,7 +14,7 @@ module HtmlCom
   
   class Accordion
     
-    attr_reader :to_html, :to_css, :to_js
+    attr_reader :to_html, :to_css, :to_js, :to_tags
     
     def initialize(xml, debug: false)
       
@@ -23,12 +23,43 @@ module HtmlCom
       # transform the accordion XML to tags XML
       tags = Nokogiri::XSLT(xsl()).transform(Nokogiri::XML(xml))\
           .to_xhtml(indent: 0)
+      
+      @to_tags = tags # used for debugging the structure
+      
       jmb = JsMenuBuilder.new(tags, debug: debug)
-      @to_css = jmb.to_css
-      @to_js = jmb.to_js
+      
+      pg = if Rexle.new(xml).root.attributes[:navbar] then
 
-      # apply the AJAX      
-      @to_html = JsAjaxWizard.new(jmb.to_webpage).to_html      
+        a = jmb.to_h.keys.sort.map {|key, _| [key, '#' + key.downcase]}
+
+        navbar = JsMenuBuilder.new(:sticky_navbar, {sticky_navbar: a, 
+                                                    debug: debug})
+        
+        @to_css = navbar.to_css + "\n" + jmb.to_css
+        @to_js = navbar.to_js + "\n" + jmb.to_js
+
+
+        jmb.to_webpage do |css, html, js|
+          
+          [
+            navbar.to_css + "\n" + css, 
+            navbar.to_html + "\n" + html, 
+            navbar.to_js + "\n" + js
+          ]
+          
+        end
+        
+      else
+        
+        @to_css = jmb.to_css
+        @to_js = jmb.to_js
+      
+        jmb.to_webpage
+        
+      end
+
+      # apply the AJAX
+      @to_html = JsAjaxWizard.new(pg).to_html      
 
     end
     
