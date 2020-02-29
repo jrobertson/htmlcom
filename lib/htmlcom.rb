@@ -219,5 +219,17 @@ xsl= %q(
 
   end
   
+  class Tree
+    
+    def initialize(s, debug: false, hn: 2)
+      jtb = JsTreeBuilder.new(:sidebar, {src: s, hn: hn, debug: debug})
+      @html = jtb.to_webpage      
+    end
+    
+    def to_webpage()
+      @html
+    end
+    
+  end
 
 end
