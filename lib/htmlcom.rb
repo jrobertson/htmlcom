@@ -8,6 +8,7 @@ require 'nokogiri'
 require 'xml_to_sliml'
 require 'jsajax_wizard'
 require 'jsmenubuilder'
+require 'jstreebuilder'
 
 
 module HtmlCom    
@@ -86,6 +87,10 @@ xsl= %q(
       <xsl:attribute name='title'>
         <xsl:value-of select='@title'/>
       </xsl:attribute>
+      
+      <xsl:attribute name='class'>
+        <xsl:value-of select='@class'/>
+      </xsl:attribute>      
 
       <xsl:element name="input">
         <xsl:attribute name="type">hidden</xsl:attribute>
