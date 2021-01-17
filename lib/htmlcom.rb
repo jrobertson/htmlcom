@@ -126,8 +126,8 @@ xsl= %q(
 
       attr_accessor :title, :content
 
-      def initialize(title, content: '', callback: nil)
-        @title, @content, @callback = title, content, callback
+      def initialize(title, content: '', callback: nil, debug: false)
+        @title, @content, @callback, @debug = title, content, callback, debug
       end
 
       def content=(s)
@@ -156,13 +156,16 @@ xsl= %q(
     # current options for type:
     #   :tabs, :full_page_tabs
     
-    def initialize(type=:tabs, headings: [], xml: nil)
+    def initialize(type=:tabs, headings: [], xml: nil, debug: false)
 
-      @type = type
+      @type, @debug = type, debug
       @build = JsMenuBuilder.new(type, headings: headings)
+      
+      @active_tab = 1
 
       @tab = headings.map do |heading|
-        Tab.new heading, content: "<h3>#{heading}</h3>", callback: self
+        Tab.new heading, content: "<h3>#{heading}</h3>", 
+            callback: self, debug: debug
       end
 
       if xml then
@@ -200,8 +203,14 @@ xsl= %q(
       tabs = @tab.map do |tab|
         tab.title ? tab.to_a : nil
       end.compact.to_h
-
-      @build = JsMenuBuilder.new(@type, tabs: tabs, active: @active_tab)
+      
+      if @debug then
+        puts 'inside ping; tabs: ' + tabs.inspect 
+        puts '@active_tab: ' + @active_tab.inspect
+      end
+      
+      @build = JsMenuBuilder.new(@type, tabs: tabs, 
+                                 active: @active_tab, debug: @debug)
 
     end
 
