@@ -215,11 +215,18 @@ xsl= %q(
     end
 
     alias refresh ping
+    
+    def to_css()
+      @build.to_css
+    end
 
     def to_html()
       @build.to_html
     end
 
+    def to_js()
+      @build.to_js
+    end
 
     # not yet working properly
     def to_bangtag()
@@ -245,5 +252,29 @@ xsl= %q(
     end
     
   end
+  
+  class VerticalMenu
+    
+    def initialize(links, debug: false)
+      @jtb = JsMenuBuilder.new(:vertical_menu, {items: links, debug: debug})
+    end
+    
+    def to_css()
+      @jtb.to_css
+    end    
+    
+    def to_html()
+      @jtb.to_html
+    end    
+    
+    def to_js()
+      @jtb.to_js
+    end
+    
+    def to_webpage()
+      @jtb.to_webpage
+    end
+    
+  end  
 
 end
