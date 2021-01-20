@@ -253,10 +253,13 @@ xsl= %q(
     
   end
   
-  class VerticalMenu
-    
-    def initialize(links, debug: false)
-      @jtb = JsMenuBuilder.new(:vertical_menu, {items: links, debug: debug})
+  class Menu
+        
+    # current options
+    # :vertical_menu, :fixed_menu, sticky_nav, breadcrumb
+    #
+    def initialize(type=:vertical_menu, links, debug: false)
+      @jtb = JsMenuBuilder.new(type, {items: links, debug: debug})
     end
     
     def to_css()
@@ -276,5 +279,6 @@ xsl= %q(
     end
     
   end  
+  
 
 end
