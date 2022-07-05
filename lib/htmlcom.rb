@@ -9,73 +9,85 @@ require 'xml_to_sliml'
 require 'jsajax_wizard'
 require 'jsmenubuilder'
 require 'jstreebuilder'
+require 'rexle'
+require 'rexle-builder'
 
+# classes:
 
-module HtmlCom    
-  
+# Accordion
+# Tabs (:tabs, :full_page_tabs)
+# Tree
+# Menu (:vertical_menu, :fixed_menu, sticky_nav, breadcrumb)
+# Element # used by the HTML element
+# InputElement # used by the HTML input element
+# Dropdown # an HTML element
+# Textarea # an HTML element
+
+module HtmlCom
+
   class Accordion
-    
+
     attr_reader :to_html, :to_css, :to_js, :to_tags
-    
+
     def initialize(xml, debug: false)
-      
+
       xml, @debug = xml, debug
-      
+
       # transform the accordion XML to tags XML
       tags = Nokogiri::XSLT(xsl()).transform(Nokogiri::XML(xml))\
           .to_xhtml(indent: 0)
-      
+
       @to_tags = tags # used for debugging the structure
-      
+
       jmb = JsMenuBuilder.new(tags, debug: debug)
-      
+
       pg = if Rexle.new(xml).root.attributes[:navbar] then
 
         a = jmb.to_h.keys.sort.map {|key, _| [key, '#' + key.downcase]}
 
-        navbar = JsMenuBuilder.new(:sticky_navbar, {sticky_navbar: a, 
+        navbar = JsMenuBuilder.new(:sticky_navbar, {sticky_navbar: a,
                                                     debug: debug})
-        
+
         @to_css = navbar.to_css + "\n" + jmb.to_css
         @to_js = navbar.to_js + "\n" + jmb.to_js
 
 
         jmb.to_webpage do |css, html, js|
-          
+
           [
-            navbar.to_css + "\n" + css, 
-            navbar.to_html + "\n" + html, 
+            navbar.to_css + "\n" + css,
+            navbar.to_html + "\n" + html,
             navbar.to_js + "\n" + js
           ]
-          
+
         end
-        
+
       else
-        
+
         @to_css = jmb.to_css
         @to_js = jmb.to_js
-      
+
         jmb.to_webpage
-        
+
       end
 
       # apply the AJAX
-      @to_html = JsAjaxWizard.new(pg).to_html      
+      @to_html = JsAjaxWizard.new(pg).to_html
 
     end
-    
-    
+
+
     private
 
     def xsl()
-      
+
 xsl= %q(
     <xsl:stylesheet xmlns:xsl='http://www.w3.org/1999/XSL/Transform' version='1.0'>
 
   <xsl:template match='accordion'>
 
     <xsl:element name='tags'>
-      <xsl:attribute name='mode'>accordion</xsl:attribute>  
+      <xsl:attribute name='mode'>accordion</xsl:attribute>
       <xsl:apply-templates select='panel' />
     </xsl:element>
 
@@ -87,10 +99,10 @@ xsl= %q(
       <xsl:attribute name='title'>
         <xsl:value-of select='@title'/>
       </xsl:attribute>
-      
+
       <xsl:attribute name='class'>
         <xsl:value-of select='@class'/>
-      </xsl:attribute>      
+      </xsl:attribute>
 
       <xsl:element name="input">
         <xsl:attribute name="type">hidden</xsl:attribute>
@@ -117,7 +129,7 @@ xsl= %q(
 )
 
     end
-    
+
   end
 
   class Tabs
@@ -155,16 +167,16 @@ xsl= %q(
 
     # current options for type:
     #   :tabs, :full_page_tabs
-    
+
     def initialize(type=:tabs, headings: [], xml: nil, debug: false)
 
       @type, @debug = type, debug
       @build = JsMenuBuilder.new(type, headings: headings)
-      
+
       @active_tab = 1
 
       @tab = headings.map do |heading|
-        Tab.new heading, content: "<h3>#{heading}</h3>", 
+        Tab.new heading, content: "<h3>#{heading}</h3>",
             callback: self, debug: debug
       end
 
@@ -203,19 +215,19 @@ xsl= %q(
       tabs = @tab.map do |tab|
         tab.title ? tab.to_a : nil
       end.compact.to_h
-      
+
       if @debug then
-        puts 'inside ping; tabs: ' + tabs.inspect 
+        puts 'inside ping; tabs: ' + tabs.inspect
         puts '@active_tab: ' + @active_tab.inspect
       end
-      
-      @build = JsMenuBuilder.new(@type, tabs: tabs, 
+
+      @build = JsMenuBuilder.new(@type, tabs: tabs,
                                  active: @active_tab, debug: @debug)
 
     end
 
     alias refresh ping
-    
+
     def to_css()
       @build.to_css
     end
@@ -239,46 +251,171 @@ xsl= %q(
     end
 
   end
-  
+
   class Tree
-    
+
+    # hn = heading number
     def initialize(s, debug: false, hn: 2)
       jtb = JsTreeBuilder.new(:sidebar, {src: s, hn: hn, debug: debug})
-      @html = jtb.to_webpage      
+      @html = jtb.to_webpage
     end
-    
+
     def to_webpage()
       @html
     end
-    
+
   end
-  
+
   class Menu
-        
+
     # current options
     # :vertical_menu, :fixed_menu, sticky_nav, breadcrumb
     #
     def initialize(type=:vertical_menu, links, debug: false)
       @jtb = JsMenuBuilder.new(type, {items: links, debug: debug})
     end
-    
+
     def to_css()
       @jtb.to_css
-    end    
-    
+    end
+
     def to_html()
       @jtb.to_html
-    end    
-    
+    end
+
     def to_js()
       @jtb.to_js
     end
-    
+
     def to_webpage()
       @jtb.to_webpage
     end
-    
-  end  
-  
+
+  end
+
+  class MindWordsWidget
+
+    def initialize(attributes)
+
+      @attributes = {
+        content: '',
+        action: 'mwupdate',
+        target: 'icontent'
+      }.merge(attributes)
+
+    end
+
+    def input(params={})
+
+      h = @attributes.merge(params)
+      content = h[:content]
+      action = h[:action]
+      target = h[:target]
+
+@html =<<EOF
+<form action='#{action}' method='post' target='#{target}'>
+  <textarea name='content' cols='30' rows='19'>
+#{content}
+  </textarea>
+  <input type='submit' value='Submit'/>
+</form>
+EOF
+      self
+
+    end
+
+    def to_html()
+      @html
+    end
+
+  end
+
+  class Element
+
+    def initialize(h)
+      @doc = build(h)
+    end
+
+    def to_doc()
+      @doc
+    end
+
+    def build(h)
+
+      puts 'h: ' + h.inspect
+      doc = Rexle.new(RexleBuilder.new(h).to_a)
+      puts doc.xml pretty: true
+      doc
+    end
+
+  end
+
+  class InputElement < Element
+
+    def initialize(rawobj)
+
+      if @label then
+
+        obj = [{label: @label}, rawobj]
+        super({@tag.to_sym => obj})
+        @doc.root.element(@tag + '/label').attributes[:for] = @id
+
+      else
+        super({@tag.to_sym => rawobj})
+      end
+
+      if @id then
+        elem = @doc.root.element(@tag + '/' + @htmltag)
+        elem.attributes[:name] = @id
+        elem.attributes[:id] = @id
+      end
+
+    end
+
+  end
+
+  class Dropdown < InputElement
+
+    def initialize(rawoptions=[], options: rawoptions, label: nil, id: nil)
+
+      @tag = 'dropdown'
+      @htmltag = 'select'
+      @id = id
+      @label = label
+
+      if options.is_a? Array then
+
+        list = options.map {|option| {option: option}}
+        super({_select: list})
+
+      elsif options.is_a? Hash then
+
+        list = options.values.map {|option| {option: option}}
+        values = options.keys
+        puts 'list: ' + list.inspect
+        super({_select: list})
+
+        @doc.root.xpath('dropdown/select/option').each.with_index do |e,i|
+          e.attributes[:value] = values[i]
+        end
+
+
+      end
+    end
+  end
+
+  class Textarea < InputElement
+
+    def initialize(value='', text: value, label: nil, id: nil)
+
+      @tag = 'textarea'
+      @htmltag = 'textarea'
+      @id = id
+      @label = label
+      super({@tag.to_sym => text})
+
+    end
+
+  end
 
 end
