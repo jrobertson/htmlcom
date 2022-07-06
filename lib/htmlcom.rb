@@ -22,6 +22,7 @@ require 'rexle-builder'
 # InputElement # used by the HTML input element
 # Dropdown # an HTML element
 # Textarea # an HTML element
+# FormBuilder
 
 module HtmlCom
 
@@ -332,20 +333,30 @@ EOF
 
   class Element
 
-    def initialize(h)
-      @doc = build(h)
+    def initialize(obj)
+
+      @doc = build(obj)
+      puts '@doc.xml : ' + @doc.xml.inspect
+      if @id then
+        elem = @doc.root.element(@tag + '/' + @htmltag)
+        puts 'elem: ' +elem.inspect
+        elem.attributes[:name] = @id
+        elem.attributes[:id] = @id
+      end
+
+    end
+
+    def html_element()
+      @doc.root.element(@tag + '/' + @htmltag)
     end
 
     def to_doc()
       @doc
     end
 
-    def build(h)
-
-      puts 'h: ' + h.inspect
-      doc = Rexle.new(RexleBuilder.new(h).to_a)
-      puts doc.xml pretty: true
-      doc
+    def build(rawobj)
+      obj = rawobj.is_a?(Hash) ? RexleBuilder.new(rawobj).to_a : rawobj
+      Rexle.new(obj)
     end
 
   end
@@ -362,12 +373,6 @@ EOF
 
       else
         super({@tag.to_sym => rawobj})
-      end
-
-      if @id then
-        elem = @doc.root.element(@tag + '/' + @htmltag)
-        elem.attributes[:name] = @id
-        elem.attributes[:id] = @id
       end
 
     end
@@ -388,11 +393,15 @@ EOF
         list = options.map {|option| {option: option}}
         super({_select: list})
 
+        values = options.map(&:downcase)
+        @doc.root.xpath('dropdown/select/option').each.with_index do |e,i|
+          e.attributes[:value] = values[i]
+        end
+
       elsif options.is_a? Hash then
 
         list = options.values.map {|option| {option: option}}
         values = options.keys
-        puts 'list: ' + list.inspect
         super({_select: list})
 
         @doc.root.xpath('dropdown/select/option').each.with_index do |e,i|
@@ -414,6 +423,87 @@ EOF
       @label = label
       super({@tag.to_sym => text})
 
+    end
+
+  end
+
+  class Form < Element
+
+    def initialize(inputs=nil, id: nil, method: :get, action: '')
+
+      @tag = 'form'
+      @htmltag = 'form'
+      @id = id
+
+      super([:root, {}, [@tag,{}, [@htmltag, {}]]])
+      form = @doc.root.element(@tag + '/' + @htmltag)
+      form.add inputs if inputs
+      form.attributes[:method] = method.to_s
+      form.attributes[:action] = action
+
+    end
+
+  end
+
+
+  # e.g. inputs = {txt: [:textarea], audiotype: [:dropdown, 'gsm'], voice: [:dropdown, 'Stuart']}
+  #        options = {audiotype: ['gsm', 'wav'], voice: %w(Stuart Kirsty Andrew)}
+  #
+  # fb = HtmlCom::FormBuilder.new(inputs: inputs, options: options)
+  # puts fb.to_html
+
+  class FormBuilder
+
+
+
+    def initialize(inputs: {}, options: {}, id: 'form1', method: :get, action: '', debug: false)
+
+      @debug = debug
+
+      h = inputs.map do |key, value|
+
+        if debug then
+          puts 'id: ' + key.inspect
+          puts 'klass: ' + value.first.inspect
+        end
+
+        [key, [value.first]]
+      end.to_h
+
+      options.each do |key, value|
+        h[key] << value
+      end
+
+      klass = {dropdown: HtmlCom::Dropdown, textarea: HtmlCom::Textarea}
+
+      @form = HtmlCom::Form.new(id: id, method: method, action: action)
+
+      h.each do |key, value|
+
+        id = key
+        type, content = value
+        action = case type
+        when :dropdown
+          'Select'
+        else
+          'Enter'
+        end
+
+        obj = klass[type].new content, id: id, label: action + ' ' + id.to_s
+
+        obj.to_doc.root.element(type.to_s).elements.each do |e|
+          @form.html_element.add e
+        end
+
+      end
+    end
+
+    def to_doc()
+      @form.to_doc
+    end
+
+    def to_html()
+      @form.to_doc.root.xml pretty: true
     end
 
   end
