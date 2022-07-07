@@ -354,6 +354,10 @@ EOF
       @doc
     end
 
+    def to_html()
+      html_element.xml pretty: true
+    end
+
     def build(rawobj)
       obj = rawobj.is_a?(Hash) ? RexleBuilder.new(rawobj).to_a : rawobj
       Rexle.new(obj)
@@ -443,6 +447,11 @@ EOF
 
     end
 
+    def add_submit()
+      submit = Rexle.new(['input', {type: 'submit', value: 'Submit'}])
+      html_element().add submit
+    end
+
   end
 
 
@@ -453,8 +462,6 @@ EOF
   # puts fb.to_html
 
   class FormBuilder
-
-
 
     def initialize(inputs: {}, options: {}, id: 'form1', method: :get, action: '', debug: false)
 
@@ -496,6 +503,9 @@ EOF
         end
 
       end
+
+      @form.add_submit
+
     end
 
     def to_doc()
@@ -503,7 +513,7 @@ EOF
     end
 
     def to_html()
-      @form.to_doc.root.xml pretty: true
+      @form.to_html
     end
 
   end
