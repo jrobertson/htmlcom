@@ -358,6 +358,8 @@ EOF
       html_element.xml pretty: true
     end
 
+    private
+
     def build(rawobj)
       obj = rawobj.is_a?(Hash) ? RexleBuilder.new(rawobj).to_a : rawobj
       Rexle.new(obj)
@@ -431,6 +433,35 @@ EOF
 
   end
 
+
+  class Text < InputElement
+
+    def initialize(value='', text: value, label: nil, id: nil)
+
+      @tag = 'text'
+      @htmltag = 'input'
+      @id = id
+      @label = label
+      super( [@htmltag, {type: 'text', value: text}])
+
+    end
+
+  end
+
+
+  class Hidden < InputElement
+
+    def initialize(value='', text: value, id: nil, label: nil)
+
+      @tag = 'hidden'
+      @htmltag = 'input'
+      @id = id
+      super( [@htmltag, {type: 'hidden', value: text}])
+
+    end
+
+  end
+
   class Form < Element
 
     def initialize(inputs=nil, id: nil, method: :get, action: '')
@@ -474,23 +505,30 @@ EOF
           puts 'klass: ' + value.first.inspect
         end
 
-        [key, [value.first]]
+        [key, value]
       end.to_h
 
       options.each do |key, value|
         h[key] << value
       end
 
-      klass = {dropdown: HtmlCom::Dropdown, textarea: HtmlCom::Textarea}
+      klass = {
+        dropdown: HtmlCom::Dropdown,
+        textarea: HtmlCom::Textarea,
+        text: HtmlCom::Text,
+        hidden: HtmlCom::Hidden
+      }
 
       @form = HtmlCom::Form.new(id: id, method: method, action: action)
 
       h.each do |key, value|
 
         id = key
+        puts 'value: ' + value.inspect
         type, content = value
         action = case type
         when :dropdown
+          content = value.last
           'Select'
         else
           'Enter'

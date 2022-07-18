@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'htmlcom'
-  s.version = '0.3.2'
+  s.version = '0.3.3'
   s.summary = 'Generates HTML components and is designed for rendering ' + 
       'dynamic web pages from a web server.'
   s.authors = ['James Robertson']
