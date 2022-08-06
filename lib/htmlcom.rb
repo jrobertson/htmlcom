@@ -335,11 +335,14 @@ EOF
 
     def initialize(obj)
 
+      puts 'about to build object: ' + obj.inspect
       @doc = build(obj)
       puts '@doc.xml : ' + @doc.xml.inspect
+
       if @id then
+        puts '@tag, @html -> ' + [@tag, @htmltag].inspect
         elem = @doc.root.element(@tag + '/' + @htmltag)
-        puts 'elem: ' +elem.inspect
+        puts 'elem2: ' +elem.inspect
         elem.attributes[:name] = @id
         elem.attributes[:id] = @id
       end
@@ -361,6 +364,7 @@ EOF
     private
 
     def build(rawobj)
+      puts 'rawobj: ' + rawobj.inspect
       obj = rawobj.is_a?(Hash) ? RexleBuilder.new(rawobj).to_a : rawobj
       Rexle.new(obj)
     end
@@ -371,6 +375,7 @@ EOF
 
     def initialize(rawobj)
 
+      puts '@tag: ' + @tag.inspect
       if @label then
 
         obj = [{label: @label}, rawobj]
@@ -443,7 +448,7 @@ EOF
       @id = id
       @label = label
       super( [@htmltag, {type: 'text', value: text}])
-
+      puts 'Text: after super'
     end
 
   end
@@ -496,7 +501,7 @@ EOF
 
     def initialize(inputs: {}, options: {}, id: 'form1', method: :get, action: '', debug: false)
 
-      @debug = debug
+      @debug  = debug
 
       h = inputs.map do |key, value|
 
@@ -505,11 +510,13 @@ EOF
           puts 'klass: ' + value.first.inspect
         end
 
-        [key, value]
+        [key.to_sym, value]
       end.to_h
 
-      options.each do |key, value|
-        h[key] << value
+      if options then
+        options.each do |key, value|
+          h[key.to_sym] << value
+        end
       end
 
       klass = {
@@ -526,7 +533,7 @@ EOF
         id = key
         puts 'value: ' + value.inspect
         type, content = value
-        action = case type
+        action = case type.to_sym
         when :dropdown
           content = value.last
           'Select'
@@ -534,7 +541,9 @@ EOF
           'Enter'
         end
 
-        obj = klass[type].new content, id: id, label: action + ' ' + id.to_s
+        puts 'type: ' + type.inspect
+        obj = klass[type.to_sym].new content, id: id, label: action + ' ' + id.to_s
+        puts 'after klass'
 
         obj.to_doc.root.element(type.to_s).elements.each do |e|
           @form.html_element.add e
